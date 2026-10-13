@@ -40,7 +40,7 @@ struct MainView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } detail: {
             if let id = state.selectedSetID, state.secretSets.contains(where: { $0.id == id }) {
-                SecretSetDetailView(set: binding(for: id))
+                SecretSetDetailView(secretSet: binding(for: id))
                     .id(id)
             } else {
                 ContentUnavailableView {

@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SecretSetDetailView: View {
     @Environment(AppState.self) private var state
-    @Binding var set: SecretSet
+    @Binding var secretSet: SecretSet
 
     @State private var showImport = false
     @State private var confirmSend = false
@@ -12,20 +12,20 @@ struct SecretSetDetailView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Nombre del conjunto", text: $set.name, prompt: Text("Ej. Producción API"))
+                TextField("Nombre del conjunto", text: $secretSet.name, prompt: Text("Ej. Producción API"))
             }
 
             Section("Destino") {
                 LabeledContent("Repositorio") {
-                    RepositoryPicker(selection: $set.repository)
+                    RepositoryPicker(selection: $secretSet.repository)
                 }
-                Picker("Tipo de secreto", selection: $set.target) {
+                Picker("Tipo de secreto", selection: $secretSet.target) {
                     ForEach(SecretTarget.allCases) { target in
                         Text(target.title).tag(target)
                     }
                 }
-                if set.target == .environment {
-                    TextField("Entorno", text: $set.environment, prompt: Text("production"))
+                if secretSet.target == .environment {
+                    TextField("Entorno", text: $secretSet.environment, prompt: Text("production"))
                     Text("Si el entorno no existe en el repositorio, se creará al enviar.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -33,20 +33,20 @@ struct SecretSetDetailView: View {
             }
 
             Section {
-                ForEach($set.secrets) { $secret in
+                ForEach($secretSet.secrets) { $secret in
                     SecretRow(
                         secret: $secret,
                         onEdit: { editing = secret },
                         onDelete: { remove(secret.id) }
                     )
                 }
-                if set.secrets.isEmpty {
+                if secretSet.secrets.isEmpty {
                     Text("Este conjunto no tiene secretos todavía.")
                         .foregroundStyle(.secondary)
                 }
             } header: {
                 HStack {
-                    Text("Secretos (\(set.secrets.count))")
+                    Text("Secretos (\(secretSet.secrets.count))")
                     Spacer()
                     Button {
                         showImport = true
@@ -54,7 +54,7 @@ struct SecretSetDetailView: View {
                         Label("Importar .env", systemImage: "square.and.arrow.down")
                     }
                     Button {
-                        set.secrets.append(SecretItem())
+                        secretSet.secrets.append(SecretItem())
                     } label: {
                         Label("Añadir secreto", systemImage: "plus")
                     }
@@ -67,16 +67,16 @@ struct SecretSetDetailView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(set.name.isEmpty ? "Sin nombre" : set.name)
+        .navigationTitle(secretSet.name.isEmpty ? "Sin nombre" : secretSet.name)
         .safeAreaInset(edge: .bottom) {
             sendBar
         }
         .confirmationDialog(
-            "¿Enviar \(set.secrets.count) secreto(s) a \(set.repository ?? "")?",
+            "¿Enviar \(secretSet.secrets.count) secreto(s) a \(secretSet.repository ?? "")?",
             isPresented: $confirmSend
         ) {
             Button("Enviar") {
-                let id = set.id
+                let id = secretSet.id
                 Task { await state.upload(setID: id) }
             }
             Button("Cancelar", role: .cancel) {}
@@ -88,26 +88,26 @@ struct SecretSetDetailView: View {
         }
         .sheet(item: $editing) { item in
             ValueEditorSheet(item: item) { updated in
-                if let index = set.secrets.firstIndex(where: { $0.id == updated.id }) {
-                    set.secrets[index] = updated
+                if let index = secretSet.secrets.firstIndex(where: { $0.id == updated.id }) {
+                    secretSet.secrets[index] = updated
                 }
             }
         }
     }
 
     private var destinationDescription: String {
-        set.target == .environment ? "entorno «\(set.environment)»" : set.target.title
+        secretSet.target == .environment ? "entorno «\(secretSet.environment)»" : secretSet.target.title
     }
 
     private var sendBar: some View {
-        let problems = set.problems
+        let problems = secretSet.problems
         return HStack(spacing: 12) {
             if let first = problems.first {
                 Label(problems.count > 1 ? "\(first) (+\(problems.count - 1))" : first, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
                     .lineLimit(1)
                     .help(problems.joined(separator: "\n"))
-            } else if let lastSent = set.lastSentAt {
+            } else if let lastSent = secretSet.lastSentAt {
                 Label("Último envío: \(lastSent.formatted(date: .abbreviated, time: .shortened))", systemImage: "checkmark.circle")
                     .foregroundStyle(.secondary)
             } else {
@@ -133,17 +133,17 @@ struct SecretSetDetailView: View {
     }
 
     private func remove(_ id: SecretItem.ID) {
-        set.secrets.removeAll { $0.id == id }
+        secretSet.secrets.removeAll { $0.id == id }
     }
 
     /// Adds imported secrets, updating the value of those that already exist.
     private func merge(_ items: [SecretItem]) {
-        set.secrets.removeAll { $0.name.isEmpty && $0.value.isEmpty }
+        secretSet.secrets.removeAll { $0.name.isEmpty && $0.value.isEmpty }
         for item in items {
-            if let index = set.secrets.firstIndex(where: { $0.normalizedName == item.normalizedName }) {
-                set.secrets[index].value = item.value
+            if let index = secretSet.secrets.firstIndex(where: { $0.normalizedName == item.normalizedName }) {
+                secretSet.secrets[index].value = item.value
             } else {
-                set.secrets.append(item)
+                secretSet.secrets.append(item)
             }
         }
     }
