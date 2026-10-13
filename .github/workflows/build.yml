@@ -1,0 +1,22 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test crypto
+        run: make test
+      - name: Build app
+        run: make build
+      - name: Package app
+        run: ditto -c -k --keepParent build/RepositoryManager.app build/RepositoryManager.zip
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: RepositoryManager
+          path: build/RepositoryManager.zip
